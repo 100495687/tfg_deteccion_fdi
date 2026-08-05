@@ -1,0 +1,11 @@
+data/raw/
+data/processed/
+results/tables/
+results/logs/
+experiments/threshold_tradeoff/
+edge_deployment/results/tables/
+edge_deployment/results/logs/
+edge_deployment/docker_context/
+__pycache__/
+*.pyc
+.pytest_cache/

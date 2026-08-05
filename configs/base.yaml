@@ -1,0 +1,65 @@
+# Configuracion base del detector no supervisado de fraude electrico
+# Cada modulo lee unicamente las claves que necesita (nada de rutas absolutas)
+
+seed: 42   # semilla unica para reproducibilidad
+
+data:   # carga y preprocesamiento de datos (UCI Individual Household Electric Power Consumption, id=235)
+  uci_id: 235
+  columna_objetivo: "Global_active_power"   # unica variable usada; se ignoran intensidad, tension, reactiva y submeters
+  frecuencia: "1min"
+  metodo_imputacion: "linear"   # interpolacion lineal sobre los huecos (~1.25% del dataset)
+
+split:   # particion temporal train/val/test 
+  train_anos: [1, 2]   # dias [0, 730)    
+  val_ano: 3            # dias [730, 1095) 
+  test_ano: 4            # dias [1095, fin) 
+
+windowing:   # como se trocean las series en ventanas para entrenar y evaluar el modelo
+  tamano_ventana_min: 360       # 6h; ganador tras comparar 1440/720/360 
+  stride_train_fraccion: 0.25   # solape en train = 1/4 de la ventana (mas muestras)
+  stride_eval_min: null         # ventanas disjuntas en val/test 
+
+normalizacion:
+  metodo: "zscore"   # media y desviacion calculadas en train
+
+modelo:
+  nombre: "tcn_ae" 
+  tcn_ae:   # arquitectura: encoder dilatado -> bottleneck (AvgPool) -> decoder simetrico
+    canales: [16, 32, 32]     # numero de canales generados por cada bloque del encoder
+    kernel_size: 3            # numero de puntos temporales usados por cada filtro
+    dilataciones: [1, 2, 4]   # separacion entre los puntos observados en cada bloque
+    latent_channels: 8        # numero de canales de la representacion comprimida
+    pool_size: 8               # reduce la longitud temporal dividiendola entre 8 (debe dividir tamano_ventana_min)
+    dropout: 0.1                # desactiva un 10% de las activaciones para reducir el sobreajuste
+  entrenamiento:
+    optimizador: "adam"
+    learning_rate: 0.001
+    batch_size: 64
+    epochs_max: 100
+    paciencia_early_stopping: 10   # sobre la loss de validacion 
+    loss: null                     # null -> usa score.tipo si es mae/mse; si no, cae a MSE
+
+score:
+  tipo: "deficit"   # mae | mse | deficit -- deficit (residuo con signo) se usa porque mae/mse dan
+                     # DR=0%: una ventana atacada es mas facil de reconstruir, no mas dificil
+
+umbral:
+  estrategia: "percentil"   # percentil | media_3sigma
+  percentil: 99   # punto de operacion conservador (FA=1.52% con ventana=360);
+                    # bajar a 95 sube el recall a cambio de mas falsa alarma
+
+ataques:   # familias de fraude deductivo: nunca aumentan la lectura reportada
+  reduccion_constante:
+    rho: [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]   # y = rho * x, constante en el tiempo
+  reduccion_variable:
+    rho_min: 0.10   # y_t = beta_t * x_t, con beta_t variando minuto a minuto en [rho_min, rho_max]
+    rho_max: 0.70
+  bypass_total:
+    rho: 0.0   # y = 0, no se reporta consumo
+  bypass_residual:
+    rho: [0.05, 0.10]   # como reduccion_constante pero con rho muy bajo, deja pasar solo 5-10%
+  recorte_picos:
+    cuantil_umbral: [0.70, 0.80, 0.90]   # y = min(x, umbral); umbral en kW, calculado sobre
+                                           # estos cuantiles del consumo limpio de train
+  duraciones_min: [30, 60, 120, 240, 360, 720, 1440]   # duracion del tramo atacado dentro de la ventana
+  n_posiciones_por_duracion: 6   # episodios independientes por combinacion (familia x parametro x duracion)
