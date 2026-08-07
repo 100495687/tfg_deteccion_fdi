@@ -1,0 +1,34 @@
+# Fase 3 -- imagen BASELINE (fdia-edge:baseline). Prioriza reproducibilidad y funcionamiento
+# sobre tamano: sin usuario no-root, sin limpieza de cache de pip, sin HEALTHCHECK. Sirve de
+# punto de comparacion para medir el efecto de las optimizaciones de empaquetado aplicadas en
+# el Dockerfile "optimized" (edge_deployment/Dockerfile) -- NINGUNA de las dos imagenes
+# modifica el modelo, los umbrales ni la precision numerica: ambas ejecutan el mismo codigo
+# de edge_deployment/docker_context/, copiado sin cambios.
+#
+# Build (contexto = edge_deployment/docker_context/, generado por build_docker_context.py):
+#   python -m edge_deployment.build_docker_context
+#   docker build -f edge_deployment/Dockerfile.baseline -t fdia-edge:baseline edge_deployment/docker_context
+
+FROM python:3.14-slim
+
+WORKDIR /app
+
+COPY requirements-edge.txt .
+RUN pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple \
+    -r requirements-edge.txt
+
+COPY src/ ./src/
+COPY configs/ ./configs/
+COPY models/ ./models/
+COPY edge_deployment/ ./edge_deployment/
+
+# Fase 4: reportes de arranque/logs (edge_deployment/api/lifecycle.py). Ya no hacen falta
+# directorios para data/raw ni results/tables -- el autonomous_loader (por defecto) no abre
+# ningun CSV (ver docker_context/RUNTIME_MOUNTS.md).
+RUN mkdir -p edge_deployment/results/reports edge_deployment/results/logs
+
+EXPOSE 8000
+
+# --workers 1: unico worker soportado (Fase 2, motivo documentado en README_API.md -- estado
+# en memoria del DetectorEngine, no compartido entre procesos).
+CMD ["uvicorn", "edge_deployment.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

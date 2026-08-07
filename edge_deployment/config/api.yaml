@@ -1,0 +1,51 @@
+service:
+  name: fdia-edge-detector
+  version: 1.0.0
+  host: 127.0.0.1
+  port: 8000
+  workers: 1
+
+engine:
+  config_path: edge_deployment/config/edge_engine.yaml
+  artifact_manifest_path: edge_deployment/models/artifact_manifest.json
+
+state:
+  backend: in_memory
+  max_active_meters: 1
+
+api:
+  forbid_extra_fields: true
+  include_request_id: true
+  enable_reset_endpoint: true
+  enable_metrics_endpoint: true
+
+logging:
+  level: INFO
+  structured: true
+  log_payloads: false
+
+metrics:
+  latency_reservoir_size: 10000
+
+benchmark:
+  use_test: false
+  smoke_days: 3
+  final_days: 30
+
+# Fase 5 -- capa anti-replay OPCIONAL, desactivada por defecto (seccion 6). Con
+# anti_replay_enabled=false, /readings, /health y /ready se comportan exactamente igual que en
+# Fase 4; la ausencia de claves nunca impide arrancar el detector. Nunca poner una clave aqui
+# (seccion 9) -- key_provider=environment lee las claves de variables de entorno
+# FDIA_METER_KEY_<meter_id> en tiempo de ejecucion, nunca desde este fichero ni desde el
+# repositorio.
+security:
+  anti_replay_enabled: false
+  key_provider: environment
+  key_env_prefix: FDIA_METER_KEY_
+  max_message_age_seconds: 300
+  max_future_skew_seconds: 60
+  # Correccion obligatoria: /security/test/init-session y /security/test/clock son un
+  # mecanismo de administracion/prueba, NUNCA deben estar accesibles en produccion --
+  # independiente de anti_replay_enabled. false SIEMPRE en este fichero (produccion); solo
+  # los scripts de experimentos de Fase 5 lo activan via FDIA_SECURITY_TEST_ENDPOINTS_ENABLED.
+  test_endpoints_enabled: false
