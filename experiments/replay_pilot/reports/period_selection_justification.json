@@ -1,0 +1,16 @@
+{
+  "periodo_elegido": "FINAL_CAL_POOL_180",
+  "rango": [
+    "2009-06-18 17:24:00",
+    "2009-12-15 17:24:00"
+  ],
+  "duracion_dias": 180.0,
+  "razones": [
+    "Es el UNICO periodo pre-test con un modelo H ya entrenado y congelado en disco (models/final_or_pretest/histgb_periodic_final.joblib) -- los 4 folds walk-forward de seleccion de arquitectura no tienen H persistido por fold (requeriria fit()).",
+    "P es un checkpoint global ya congelado, valido para cualquier periodo pre-test por igual.",
+    "Continuidad temporal: 180 dias consecutivos sin huecos de particion.",
+    "Compatible con los lags de H (7 dias = 10080 min): FINAL_TRAIN precede directamente al pool con ~2.5 anios de datos limpios, suficiente para el contexto de origen incluso en destinos cercanos al inicio del pool.",
+    "Facilidad tecnica: reutiliza literalmente congelacion_final_or_pretest.predecir_pool_limpio y evaluacion_final_retrospectiva_test.puntuar_p_limpio sin modificarlas."
+  ],
+  "no_se_uso_como_criterio": "cantidad de detecciones esperada en el periodo (no se consulto)"
+}

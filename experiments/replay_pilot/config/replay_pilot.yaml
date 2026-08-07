@@ -1,0 +1,55 @@
+experiment:
+  name: replay_pilot
+  version: 1
+  random_seed: 20260801
+  pretest_only: true
+
+replay:
+  shifts:
+    daily_minutes: 1440
+    weekly_minutes: 10080
+  durations_minutes:
+    - 120
+    - 360
+    - 1440
+  destinations_per_duration: 10
+  paired_design: true
+  copy_exact_values: true
+  smooth_boundaries: false
+  scale_values: false
+
+models:
+  train: false
+  recalibrate: false
+  P_threshold: 0.049748
+  H_threshold: 0.883628
+
+selection:
+  use_scores: false
+  use_energy_difference: false
+  use_detection_results: false
+  stratify_quarter: true
+  stratify_daypart: true
+  weekday_targets: 6
+  weekend_targets: 4
+
+zones:
+  max_boundary_minutes: 60
+  min_boundary_minutes: 30
+  boundary_fraction: 0.25
+  post_attack_minutes: 60
+
+energy:
+  absolute_neutral_tolerance_kwh: 0.01
+  relative_neutral_tolerance: 0.01
+
+outputs:
+  overwrite: false
+
+# Rutas reales localizadas tras inspeccionar el repositorio (ver
+# tables/input_artifacts_inventory.csv para el inventario completo con hashes).
+paths:
+  frozen_h_model: models/final_or_pretest/histgb_periodic_final.joblib
+  frozen_h_profile: models/final_or_pretest/profile_train_final.joblib
+  frozen_p_config: results/tables/energy_distance_operativo/02_umbrales_calibrados.csv
+  decision_config: models/auditoria_final_p_vs_or/configuracion_final_decision_pretest.json

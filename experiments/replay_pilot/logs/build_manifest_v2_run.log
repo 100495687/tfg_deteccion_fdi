@@ -1,0 +1,10 @@
+[manifest] Verificando decision de arquitectura ya cerrada (sin recomparar)...
+[manifest] OK.
+[manifest] Periodo seleccionado: FINAL_CAL_POOL_180 [2009-06-18 17:24:00 -> 2009-12-15 17:24:00]
+[manifest] Duracion 120 min: 3759 candidatos validos de 4000 evaluados
+[manifest] Duracion 120 min: 10/10 destinos seleccionados (trimestre {2: 4, 3: 3, 4: 3}, daypart {'madrugada': 3, 'mañana': 3, 'tarde': 2, 'noche': 2}, laborable=6 finde=4)
+[manifest] Duracion 360 min: 3681 candidatos validos de 4000 evaluados
+[manifest] Duracion 360 min: 10/10 destinos seleccionados (trimestre {2: 4, 3: 3, 4: 3}, daypart {'mañana': 3, 'tarde': 3, 'noche': 2, 'madrugada': 2}, laborable=6 finde=4)
+[manifest] Duracion 1440 min: 3357 candidatos validos de 4000 evaluados
+[manifest] Duracion 1440 min: 10/10 destinos seleccionados (trimestre {2: 2, 3: 4, 4: 4}, daypart {'tarde': 3, 'noche': 3, 'madrugada': 2, 'mañana': 2}, laborable=6 finde=4)
+[manifest] Manifiesto congelado: 60 episodios, status=MANIFEST_FROZEN_READY_FOR_INJECTION

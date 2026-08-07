@@ -1,0 +1,10 @@
+{
+  "status": "MANIFEST_V1_SUPERSEDED_TECHNICAL_BUG_NOT_RESULT_DRIVEN",
+  "detected_when": "Durante el smoke-test del motor de evaluacion (evaluate_replay.py), antes de ejecutar los 60 episodios completos, no despues de observar tasas de deteccion",
+  "problem": "El criterio de validez de un destino (build_replay_manifest.evaluar_candidato) exigia contexto causal de 7 dias para H medido respecto al INICIO DE TODA LA SERIE PRE-TEST (incluyendo FINAL_TRAIN), no respecto al inicio del propio FINAL_CAL_POOL_180. predictor_causal_lags.puntuar_ataques, sin embargo, descarta internamente (t < MAX_LAG=672) cualquier bin cuyo indice en la rejilla DENSA DEL POOL sea anterior a 7 dias desde el inicio del pool -- independientemente de si existe historia limpia valida mas alla en FINAL_TRAIN.",
+  "consequence": "4 de los 60 episodios (D360_000_DAILY/WEEKLY, D1440_003_DAILY/WEEKLY) tenian destino dentro de los primeros 7 dias del pool y por tanto produjeron 0 filas en meta_h (H nunca los puntuaba, ni limpio ni atacado, en ese tramo) -- episodios tecnicamente invalidos para el analisis de H/OR aunque pasaran la validacion de datos/calidad.",
+  "fix": "Se anadio un criterio explicito en evaluar_candidato: dest_start >= pool_ini + 7 dias (H_LAG_CONTEXT_MIN). Ningun otro criterio de seleccion, familia, duracion, desplazamiento, semilla o parametro fue modificado.",
+  "not_a_result_driven_change": "El cambio no se baso en ninguna tasa de deteccion observada -- en el momento de detectarse el problema no se habia evaluado ningun episodio final (solo 3 episodios de un smoke test interno, ninguno de los cuales era uno de los 4 afectados).",
+  "v1_preserved": "replay_pilot_manifest_v1.csv, candidate_destinations_v1.csv, rejected_candidates_v1.csv y replay_pilot_manifest_v1.json quedan preservados sin modificar en este directorio; nunca se usaron para ninguna evaluacion.",
+  "v2_status": "Manifiesto v2 regenerado con el mismo seed (20260801), mismas familias/duraciones/desplazamientos, unicamente con el criterio de contexto corregido -- ver manifests/replay_pilot_manifest.csv y reports/replay_pilot_manifest.json (manifest_version=2)."
+}

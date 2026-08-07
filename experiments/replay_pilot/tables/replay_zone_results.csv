@@ -1,0 +1,13 @@
+zona,metodo,pct
+onset,P,0.0
+onset,H,0.0
+onset,OR,0.0
+interior,P,0.0
+interior,H,0.0
+interior,OR,0.0
+end,P,0.0
+end,H,1.6666666666666667
+end,OR,1.6666666666666667
+post_attack,P,0.0
+post_attack,H,0.0
+post_attack,OR,0.0

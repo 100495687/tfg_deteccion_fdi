@@ -1,0 +1,11 @@
+{
+  "status": "REPLAY_PILOT_EVALUATED",
+  "n_episodes": 60,
+  "manifest_hash_used": "5173d35931d318921622ccfd75843d17780c92bcc17a3f130b1c4f33bb627813",
+  "evaluated_at_utc": "2026-08-01T18:43:31.328977+00:00",
+  "elapsed_seconds": 41.811891317367554,
+  "thresholds": {
+    "P": 0.049748,
+    "H": 0.883628
+  }
+}

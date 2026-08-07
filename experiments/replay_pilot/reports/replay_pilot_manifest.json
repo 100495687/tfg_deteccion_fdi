@@ -1,0 +1,135 @@
+{
+  "status": "MANIFEST_FROZEN_READY_FOR_INJECTION",
+  "manifest_version": 3,
+  "n_episodes": 60,
+  "n_paired_destinations": 30,
+  "frozen_at_utc": "2026-08-01T18:35:42.706832+00:00",
+  "git_commit": "c34b03f650e94bf3a13686906a38cbf0b71d1eea",
+  "random_seed": 20260801,
+  "manifest_hash_sha256": "5173d35931d318921622ccfd75843d17780c92bcc17a3f130b1c4f33bb627813",
+  "period_used": "FINAL_CAL_POOL_180",
+  "period_range": [
+    "2009-06-18 17:24:00",
+    "2009-12-15 17:24:00"
+  ],
+  "stratification_audit": [
+    {
+      "duration_minutes": 120,
+      "n_candidatos_validos": 3759,
+      "n_seleccionados": 10,
+      "objetivo_trimestre": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      },
+      "conteo_trimestre": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      },
+      "objetivo_daypart": {
+        "madrugada": 3,
+        "mañana": 3,
+        "tarde": 2,
+        "noche": 2
+      },
+      "conteo_daypart": {
+        "madrugada": 3,
+        "mañana": 3,
+        "tarde": 2,
+        "noche": 2
+      },
+      "objetivo_weekday": 6,
+      "objetivo_weekend": 4,
+      "conteo_weekday": 6,
+      "conteo_weekend": 4,
+      "insuficiente": false
+    },
+    {
+      "duration_minutes": 360,
+      "n_candidatos_validos": 3681,
+      "n_seleccionados": 10,
+      "objetivo_trimestre": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      },
+      "conteo_trimestre": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      },
+      "objetivo_daypart": {
+        "mañana": 3,
+        "tarde": 3,
+        "noche": 2,
+        "madrugada": 2
+      },
+      "conteo_daypart": {
+        "mañana": 3,
+        "tarde": 3,
+        "noche": 2,
+        "madrugada": 2
+      },
+      "objetivo_weekday": 6,
+      "objetivo_weekend": 4,
+      "conteo_weekday": 6,
+      "conteo_weekend": 4,
+      "insuficiente": false
+    },
+    {
+      "duration_minutes": 1440,
+      "n_candidatos_validos": 3357,
+      "n_seleccionados": 10,
+      "objetivo_trimestre": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      },
+      "conteo_trimestre": {
+        "2": 0,
+        "3": 6,
+        "4": 4
+      },
+      "objetivo_daypart": {
+        "tarde": 3,
+        "noche": 3,
+        "madrugada": 2,
+        "mañana": 2
+      },
+      "conteo_daypart": {
+        "tarde": 3,
+        "noche": 3,
+        "madrugada": 2,
+        "mañana": 2
+      },
+      "objetivo_weekday": 6,
+      "objetivo_weekend": 4,
+      "conteo_weekday": 6,
+      "conteo_weekend": 4,
+      "insuficiente": false
+    }
+  ],
+  "selection_criteria_used": [
+    "timestamp",
+    "data_quality_mask(imputado)",
+    "quarter",
+    "daypart",
+    "weekday_weekend",
+    "non_overlap",
+    "causal_context_availability"
+  ],
+  "selection_criteria_forbidden_and_confirmed_not_used": [
+    "score_P",
+    "score_H",
+    "clean_alert",
+    "detection_rate",
+    "energy_difference",
+    "source_destination_similarity",
+    "boundary_jump",
+    "mean_consumption",
+    "max_consumption",
+    "economic_family_result",
+    "replay_result"
+  ]
+}
