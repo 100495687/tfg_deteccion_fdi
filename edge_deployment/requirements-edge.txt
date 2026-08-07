@@ -1,0 +1,29 @@
+# Dependencias de INFERENCIA para la imagen Docker (Fase 3). Subconjunto minimo, fijado a
+# las versiones ya validadas en Fase 1/2 en este entorno (Python 3.14.4) -- salvaguarda: no
+# se actualiza nada automaticamente para la imagen optimized. Ver
+# edge_deployment/docker_context/context_manifest.json para el registro generado en cada
+# build (paquete -> version resuelta -> motivo).
+#
+# torch: instalar con el indice CPU de PyTorch (ver Dockerfile), igual que
+# requirements.txt en la raiz del repo -- build CPU, sin CUDA.
+#
+# NO incluido a proposito (no se usa DENTRO de la imagen, solo en herramientas de host):
+#   httpx (benchmarks/clientes de equivalencia, ejecutados fuera del contenedor)
+#
+# psutil SI hace falta dentro de la imagen: edge_deployment/api/routes.py lo importa a nivel
+# de modulo y lo usa en /metrics (psutil.Process().memory_info().rss) -- error real
+# descubierto al primer arranque del contenedor optimized (ModuleNotFoundError), corregido
+# aqui (no es una modificacion de api/core, es una correccion del listado de dependencias).
+torch==2.13.0
+numpy==2.5.1
+pandas==3.0.3
+scikit-learn==1.9.0
+scipy==1.18.0
+matplotlib==3.11.0
+joblib==1.5.3
+pyyaml==6.0.3
+pyarrow==25.0.0
+fastapi==0.136.1
+pydantic==2.13.3
+uvicorn==0.46.0
+psutil==7.2.2

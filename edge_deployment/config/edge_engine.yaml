@@ -1,0 +1,35 @@
+experiment:
+  name: online_engine_equivalence
+  version: 1
+  use_test: false
+  training_enabled: false
+  calibration_enabled: false
+
+architecture:
+  name: P_OR_H
+  threshold_P: 0.049748
+  threshold_H: 0.8836282304454135
+
+stream:
+  input_frequency_minutes: 1
+  reject_duplicates: true
+  reject_out_of_order: true
+  fill_missing_with_zero: false
+  interpolate_missing: false
+
+bootstrap:
+  enabled: true
+  require_strictly_past_context: true
+
+equivalence:
+  rtol: 1.0e-6
+  atol: 1.0e-8
+  require_alert_match_fraction: 1.0
+
+period:
+  name: pretest_equivalence
+  max_stream_days_default: 30
+
+outputs:
+  overwrite: false
+  diagnostic_mode: false
