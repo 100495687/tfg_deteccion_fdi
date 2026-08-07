@@ -1,131 +1,212 @@
-# Detección no supervisada de fraude eléctrico residencial (per-meter)
+# Detección no supervisada de fraude eléctrico residencial (FDIA)
 
-Detector de infrarreporte de consumo (fraude deductivo) para un único hogar, entrenado sin
-etiquetas de fraude real — solo con consumo limpio. Dataset UCI "Individual Household Electric
-Power Consumption" (id=235), variable objetivo `Global_active_power` (kW).
+## Objetivo del proyecto
 
-## Arquitectura: P OR H
+Detectar infrarreporte de consumo eléctrico (fraude por manipulación de datos, FDIA) en un
+contador residencial individual, sin usar en ningún momento etiquetas de fraude real: el modelo
+se entrena solo con consumo limpio y aprende a reconocer cuándo una lectura deja de parecerse a
+lo que ese hogar consume habitualmente. Dataset: UCI "Individual Household Electric Power
+Consumption" (id=235), variable `Global_active_power` a resolución de 1 minuto.
 
-El detector combina dos señales independientes con un OR:
+El enfoque final combina dos detectores de naturaleza distinta (uno reconstructivo, uno
+predictivo) en vez de apostar por uno solo, y el resultado se lleva hasta un despliegue Edge
+real: un microservicio HTTP con estado por contador que procesa lecturas una a una, pensado para
+ejecutarse en un dispositivo con recursos limitados, no en un entorno de entrenamiento.
 
-- **P** — un autoencoder convolucional temporal (TCN-AE, `src/models/tcn_ae.py`) que reconstruye
-  ventanas de 6h de consumo limpio; cuanto peor reconstruye una ventana nueva, más sospechosa es.
-- **H** — un HistGradientBoostingRegressor causal (`src/predictor_causal_lags.py`) que predice
-  el consumo a 15 min a partir de lags periódicos (día/semana anteriores) y calendario.
+## Arquitectura final: P OR H
 
-Se calibran por separado y se congelan en `models/final_or_pretest/`
-(`OR_PMULTI_HMULTIWINDOW` = `P_MULTI_SEASON` OR `H_MULTIWINDOW_180`). Usar dos detectores en vez
-de uno compensa que cada uno falla en casos distintos: el OR conserva el 99.2% de lo que
-detectaba P por su cuenta, y el 100% de lo que detectaba H por la suya.
+La arquitectura congelada, y la única que cuenta como resultado final del proyecto, es
+`OR_PMULTI_HMULTIWINDOW`: se dispara alarma si **P** o **H** disparan alarma, cada uno con su
+propio umbral calibrado por separado.
 
-La evaluación final sobre test se etiqueta `RETROSPECTIVE_CONFIRMATORY_EVALUATION`, no como test
-"virgen": una versión anterior del pipeline sí llegó a acceder a esa partición en el pasado. La
-arquitectura final nunca vio esos datos ni se diseñó consultándolos, pero se documenta la
-distinción por honestidad metodológica en vez de llamarlo test prístino sin más.
+- **P** parte de un **TCN-AE** (`src/models/tcn_ae.py`), un autoencoder convolucional temporal
+  que reconstruye ventanas de 6h de consumo limpio. El score es `relative_kw`: cuanto peor
+  reconstruye una ventana nueva, más sospechosa es. Variante final: `P_MULTI_SEASON`, con el
+  umbral recalibrado por estación en vez de fijo.
+- **H** es un predictor causal (`src/predictor_causal_lags.py`) — un
+  `HistGradientBoostingRegressor` que predice el consumo a 15 min a partir de lags periódicos
+  (24h, 48h, 72h y 7 días antes) más calendario, sin usar consumo reciente. El score es
+  `causal_relative_kw`. Variante final: `H_MULTIWINDOW_180`, calibrada exigiendo robustez en 6
+  bloques de 30 días en vez de una única ventana.
+- La alarma final es el **OR** de ambos: `active_P_MULTI_SEASON OR active_H_MULTIWINDOW_180`.
+  Usar dos detectores compensa que cada uno falla en casos distintos (ver Resultados).
+
+La decisión de quedarse con la fusión en vez de con P solo se tomó aplicando una regla de 14
+criterios ya fijados de antemano (`src/auditoria_final_p_vs_or.py`), no a ojo tras ver el
+resultado.
+
+## Pipeline resumido
+
+```mermaid
+flowchart TD
+    A[Dataset UCI IHEPC] --> B[Limpieza e interpolacion]
+    B --> C[Split train / val / test]
+    C --> D[Ventanas de 6h]
+    D --> E[TCN-AE]
+    E --> F["relative_kw -> score P"]
+    C --> G["Lags periodicos 24h/48h/72h/7d + calendario"]
+    G --> H[HistGradientBoosting]
+    H --> I["causal_relative_kw -> score H"]
+    F --> J{"P OR H"}
+    I --> J
+    J --> K[Alarma]
+    K --> L[Evaluacion final sobre test]
+    L --> M[Despliegue Edge]
+```
+
+Train se queda con consumo limpio; los ataques (`src/attacks.py` y afines) se inyectan solo
+sobre val/test para evaluar, nunca para entrenar.
+
+## Estructura del repositorio
+
+```
+configs/           parámetros del pipeline offline (un único base.yaml)
+src/               pipeline offline: carga, split, P, H, fusión, calibración, evaluación final
+experiments/       experimentos aislados fuera del pipeline principal (piloto de replay)
+models/            checkpoints y artefactos congelados (P, H, OR)
+manifests/         episodios de ataque de test, congelados con hash
+results/tables/    tablas intermedias necesarias para reproducir decisiones ya tomadas
+docs/              documentación extendida: guía completa, diagramas por bloque, papers
+edge_deployment/   despliegue: motor online, API, Docker, seguridad, tests, benchmarks
+```
+
+`data/` y `results/figures/` no se versionan (se regeneran al ejecutar el pipeline); el dataset
+se descarga solo la primera vez que se ejecuta `src/data_loading.py`.
+
+## Archivos clave
+
+| Archivo | Qué es |
+|---|---|
+| `configs/base.yaml` | Única fuente de parámetros del pipeline offline (ventanas, arquitectura del TCN-AE, umbrales de partida). |
+| `src/data_loading.py` | Carga el dataset UCI y rellena los huecos por interpolación lineal. |
+| `src/pipeline.py` | Orquesta carga + split + ventaneo + normalización + carga del modelo; lo reutiliza el resto del código. |
+| `src/models/tcn_ae.py` | Arquitectura y entrenamiento del TCN-AE (P). |
+| `src/base_relative.py` | Declara `relative_kw` como score base de P y fija el checkpoint de 360 min. |
+| `src/attacks.py` | Las 5 funciones de ataque puras: reducción constante, variable, bypass total, bypass residual, recorte de picos. |
+| `src/predictor_causal_lags.py` | Nace H: compara Ridge/HistGB con y sin lags recientes; gana `HistGB_PERIODIC`. |
+| `src/fusion_p_histgb.py` | Primera fusión OR de P y H. |
+| `src/robustez_temporal_p.py` | Nace `P_MULTI_SEASON` (el umbral fijo de P se saturaba en consumo atípico). |
+| `src/calibracion_temporal_h.py` | Nace `H_MULTIWINDOW_180`. |
+| `src/auditoria_final_p_vs_or.py` | Decisión final: P solo vs. fusión OR, con los 14 criterios ya fijados. |
+| `src/congelacion_final_or_pretest.py` | Congela la arquitectura final en `models/final_or_pretest/`. |
+| `src/evaluacion_final_retrospectiva_test.py` | Única ejecución sobre la partición de test. |
+| `edge_deployment/core/detector_engine.py` | Motor de inferencia online: mismo P/H/OR, pero lectura a lectura y con estado. |
+| `edge_deployment/api/main.py` | API FastAPI que envuelve el motor. |
+| `edge_deployment/security/anti_replay.py` | Capa opcional de autenticación anti-replay (HMAC + ventana temporal). |
+
+## Cómo reproducir el resultado final
+
+**1. Construcción y selección del detector** (entrena P y H, y decide la arquitectura final —
+nunca toca test):
+
+```bash
+python -m src.data_loading
+python -m src.splitting
+python -m src.windowing
+python -m src.normalization
+python -m src.models.tcn_ae            # entrena o carga el checkpoint de P
+python -m src.predictor_causal_lags    # nace H
+python -m src.fusion_p_histgb          # primera fusion OR
+python -m src.optimizacion_histgb_periodic   # optimiza H con validacion walk-forward
+python -m src.robustez_temporal_p      # nace P_MULTI_SEASON
+python -m src.calibracion_temporal_h   # nace H_MULTIWINDOW_180
+python -m src.auditoria_final_p_vs_or  # decide P solo vs. fusion OR
+```
+
+Algunos de estos pasos leen tablas que generan experimentos previos (`src/analisis_detectabilidad.py`,
+`src/experimento_ramp.py`, `src/energy_distance_operativo.py`...) — el orden completo y el porqué
+de cada uno está documentado en `docs/diagramas_archivos/05_experimentos.md`.
+
+**2. Congelación y evaluación final** (abre la partición de test, una sola vez):
+
+```bash
+python -m src.congelacion_final_or_pretest
+python -m src.evaluacion_final_retrospectiva_test
+```
+
+**3. Edge** — ver la sección de despliegue más abajo.
+
+## Artefactos finales
+
+Los artefactos vigentes de la arquitectura congelada son:
+
+- **Checkpoint de P**: `models/tcn_ae_ventana360.pt` (TCN-AE, ventana 360 min).
+- **Modelo y calibración de H, y configuración conjunta**: `models/final_or_pretest/`
+  (`histgb_periodic_final.joblib`, `profile_train_final.joblib`, `threshold_p_final.json`
+  = 0.049748, `threshold_h_final.json` ≈ 0.8836, `configuracion_final_or_pretest.json`, con
+  hashes SHA-256 de cada fichero en `hashes_finales.json`).
+- **Manifiesto de ataques de test**: `manifests/test_attacks_v2/attack_manifest_test_v2.csv`
+  (1680 episodios sobre 140 segmentos base). La v1 (`manifests/test_attacks/`) queda preservada
+  intacta como registro histórico, pero está superada por v2.
+- **Edge** no versiona artefactos propios: `edge_deployment/core/` lee directamente los dos
+  artefactos anteriores. Solo genera uno propio (`edge_deployment/models/params_norm_p.joblib`,
+  la normalización de P sin depender del CSV crudo) mediante un script de congelación manual de
+  un solo uso, `python -m edge_deployment.core.freeze_params_norm`, más un manifiesto de
+  integridad (`python -m edge_deployment.core.manifest_v2 --build`) que valida esos hashes en
+  cada arranque de la API.
 
 ## Ataques evaluados
 
-7 formas de infrarreporte, repartidas en 3 sitios del código:
+- **Reducciones y bypass** (`src/attacks.py`): reducción constante, reducción variable, bypass
+  total (consumo a 0) y bypass residual (deja un residuo).
+- **Recorte de picos** (`src/attacks.py`, `recorte_picos`): capa el consumo por encima de un
+  umbral.
+- **Rampas** (`src/experimento_ramp.py`): la reducción crece linealmente en el tiempo en vez de
+  aplicarse de golpe.
+- **Replay** (`experiments/replay_pilot/`): en vez de transformar la ventana actual, se sustituye
+  por una ventana donante real de otro momento de la serie (mismo día 24h antes, o mismo día de
+  la semana anterior). No encaja como transformación pura (`y = h(x)`) porque necesita una
+  segunda ventana y su propio manifiesto, así que se trata como un piloto aparte. Es también el
+  único ataque que se aborda además con una medida no basada en el modelo: la capa anti-replay de
+  Edge (ver más abajo).
 
-- **`src/attacks.py`**: reducción constante, reducción variable, bypass total, bypass residual,
-  recorte de picos — transformaciones puras de la ventana actual (`y = h(x)`).
-- **`src/experimento_ramp.py`**: rampa (reducción que crece linealmente en el tiempo).
-- **`experiments/replay_pilot/`**: replay (sustituir un tramo por otro tramo real de otro
-  momento de la serie) — necesita ventana donante + manifiesto, no encaja como función pura.
+## Resultados principales
 
-## Resultados (evaluación final sobre test)
+Evaluación única sobre test (`src/evaluacion_final_retrospectiva_test.py`, 1680 episodios de
+ataque, etiquetada `RETROSPECTIVE_CONFIRMATORY_EVALUATION` — no "test virgen", porque una versión
+anterior del pipeline sí había accedido a esa partición en el pasado; la arquitectura final nunca
+se diseñó consultándola, pero se documenta la distinción por honestidad metodológica):
 
 | | P | H | OR |
 |---|---|---|---|
-| DR energético (% de energía oculta que se detecta) | 59.8% | 69.8% | **73.3%** |
-| Falsos positivos | 0.017/día | 0.061/día | 0.078/día |
+| DR energético (% de energía oculta detectada) | 59.8% | 69.8% | **73.3%** |
+| Falsas alarmas | 0.017/día | 0.061/día | 0.078/día |
 
-Clasificación final: `CONFIRMATORY_SUPPORT`, admisible operativamente.
+- La fusión mejora el DR energético sobre cualquiera de los dos detectores por separado, y
+  conserva el 99.2% de lo que detectaba P solo y el 100% de lo que detectaba H solo: son
+  complementarios, no redundantes.
+- Clasificación final: `CONFIRMATORY_SUPPORT`, admisible operativamente (sin saturación, FA
+  dentro de presupuesto).
+- El replay es prácticamente indetectable por contenido: DR inducido de solo 1.7% en el piloto
+  dedicado de 60 episodios. Es la única familia de ataque donde el modelo no aporta casi nada,
+  y la razón por la que Edge añade autenticación en vez de seguir ajustando el detector.
 
-**Limitación conocida, sin resolver por señal**: el replay es prácticamente indetectable por
-contenido (DR inducido de solo 1.67% en el piloto dedicado). Por eso el despliegue Edge añade
-autenticación en vez de seguir ajustando el modelo (ver más abajo).
+## Despliegue Edge
 
-## Estructura
+`edge_deployment/` reimplementa la misma arquitectura P OR H para inferencia online, lectura a
+lectura, con estado por contador (`meter_id`):
 
-```
-deteccion_fraude_no_supervisada/
-├── configs/base.yaml         # unica fuente de parametros del pipeline offline
-├── data/{raw,processed}/     # cache del dataset (no versionado)
-├── models/                   # checkpoints y artefactos congelados (P, H, OR)
-├── src/                      # pipeline offline: nucleo (11 modulos) + experimentos
-├── experiments/replay_pilot/ # piloto de replay, aislado
-├── tests/
-├── results/{tables,figures}/
-└── edge_deployment/          # despliegue: motor online, API, Docker, seguridad
-```
+- **Motor** (`core/`): agregación causal a 15 min, ventanas de P, lags de H, fusión OR — todo
+  sobre buffers acotados en memoria, nunca releyendo el histórico completo.
+- **API** (`api/`, FastAPI): `/health`, `/ready`, `/bootstrap` (carga contexto histórico),
+  `/readings` (procesa una lectura), `/status/{meter_id}`, `/metrics`, `/reset/{meter_id}`.
+- **Docker** (`Dockerfile`, `Dockerfile.baseline`): dos imágenes — una de referencia y otra
+  optimizada (usuario no-root, sin caché de pip, healthcheck) — sin tocar el modelo ni la
+  precisión numérica.
+- **Procesamiento de lecturas**: valida cada lectura (duplicados, fuera de orden, huecos) antes
+  de tocar ningún buffer; un hueco descarta el bucket parcial en curso, nunca se rellena con
+  ceros ni se interpola.
+- **Benchmarks** (`benchmarks/`, `docker_tools/`): latencia y memoria en local, vía TestClient y
+  vía Uvicorn real, y dentro de contenedor con límites de CPU/memoria.
+- **HMAC y anti-replay** (`security/`): capa paralela y opcional sobre `POST /secure-readings`,
+  desactivada por defecto. Activable con `FDIA_ANTI_REPLAY_ENABLED=true`; añade autenticación
+  HMAC-SHA-256 por contador, número de secuencia y ventana de frescura de timestamp, sin
+  modificar `/readings`.
 
-## Cómo ejecutar el pipeline offline
+## Experimentos adicionales
 
-```bash
-pip install pandas numpy scikit-learn scipy matplotlib pyyaml joblib pyarrow ucimlrepo
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # build CPU, mas ligera
-
-python -m src.data_loading        # descarga y cachea el dataset (tarda solo la primera vez)
-python -m src.splitting           # verifica las particiones train/val/test
-python -m src.windowing           # ventaneo
-python -m src.normalization       # normalizacion z-score
-python -m src.models.tcn_ae       # entrena (o carga si ya existe) el checkpoint de P
-python -m src.evaluation          # evaluacion con las 5 familias de attacks.py
-```
-
-Cadena completa para reconstruir la arquitectura final `P OR H` desde cero (cada paso reutiliza
-los artefactos que dejaron los anteriores):
-
-```bash
-python -m src.predictor_causal_lags         # entrena H
-python -m src.fusion_p_histgb               # fusiona P y H
-python -m src.optimizacion_histgb_periodic  # optimiza H con validacion walk-forward
-python -m src.robustez_temporal_p           # calibra P robusto (nace P_MULTI_SEASON)
-python -m src.calibracion_temporal_h        # calibra H (nace H_MULTIWINDOW_180)
-python -m src.auditoria_final_p_vs_or       # decide P solo vs fusion OR
-python -m src.congelacion_final_or_pretest  # congela la arquitectura final en models/final_or_pretest/
-python -m src.evaluacion_final_retrospectiva_test   # evaluacion unica sobre test
-```
-
-## Cómo ejecutar el despliegue Edge
-
-El modelo ya congelado (`models/final_or_pretest/`) se sirve como microservicio HTTP. No hace
-falta ningún dataset en tiempo de ejecución: los artefactos van horneados en la imagen.
-
-**En local, sin Docker:**
-
-```bash
-pip install -r edge_deployment/requirements-edge.txt
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-uvicorn edge_deployment.api.main:app --host 127.0.0.1 --port 8000 --workers 1
-```
-
-**Con Docker (imagen de producción):**
-
-```bash
-python edge_deployment/build_docker_context.py
-docker build -t fdia-edge:local -f edge_deployment/Dockerfile edge_deployment/docker_context
-docker run --rm -p 8000:8000 fdia-edge:local
-```
-
-**Probar que responde** (en otra terminal, con el servicio ya arrancado):
-
-```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/ready
-
-curl -X POST http://localhost:8000/readings \
-  -H "Content-Type: application/json" \
-  -d '{"meter_id": "house_01", "timestamp": "2010-01-01T00:00:00", "power_kw": 1.2}'
-```
-
-La respuesta incluye si la lectura fue aceptada, los scores de P y H (cuando toque evaluarlos) y
-si hay alarma (`alert_or`). Encadenar más lecturas del mismo `meter_id` hace avanzar el estado
-interno del motor (buffers, última evaluación de P/H) igual que en un contador real.
-
-**Capa de seguridad opcional (anti-replay)**: activable con la variable de entorno
-`FDIA_ANTI_REPLAY_ENABLED=true` al arrancar el contenedor. Añade autenticación HMAC-SHA-256,
-número de secuencia y frescura de timestamp sobre una ruta paralela (`POST /secure-readings`),
-sin modificar ni sustituir `/readings`.
+El resto de `src/` (stride, tamaño de ventana, agregación del score, análisis de
+detectabilidad, CUSUM, Energy Distance, modelos alternativos de H, etc.) son experimentos que
+justifican decisiones de diseño concretas — por qué esa ventana, por qué ese score, por qué se
+descartó tal alternativa — pero no forman parte de la arquitectura final `P OR H`. El detalle de
+cada uno está en `docs/diagramas_archivos/`.
