@@ -1,0 +1,7 @@
+{
+  "metodo": "HistGB_PERIODIC",
+  "fecha_congelacion_utc": "2026-07-28T17:07:55.383556+00:00",
+  "umbral": 0.8936411147927468,
+  "banda_usada": "principal",
+  "eventos_dia_desarrollo": 0.06267806267806268
+}
