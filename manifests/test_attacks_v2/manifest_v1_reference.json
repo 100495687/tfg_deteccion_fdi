@@ -1,0 +1,25 @@
+{
+  "manifest_version": 1,
+  "status": "SUPERSEDED_BEFORE_INFERENCE",
+  "reason": "TEMPORAL_STRATIFICATION_NOT_FULLY_ENFORCED",
+  "path": "manifests\\test_attacks",
+  "hashes_originales": {
+    "attack_manifest_test.csv": "3818164ec16f78200c0b3ab49bc2fb39440902a171bb40dea9a0bc3f820e20e1",
+    "attack_manifest_test_config.json": "72ffa630d30471d0ffc37dc8d6c76bd02d368c6f2513f18f5e101de876bb52de",
+    "base_segments_test.csv": "04fc5be3e0fc9ae8fddf3cc23175b48d0086a978eb271c8bc84259c7b0d30088",
+    "manifest_freeze_record.json": "1d689c1cb4822a11fe01939f138a8903ed5034e3ef7e1a1ae8899af47ae42c84",
+    "sampling_audit_test.csv": "55c8c7c00acfe985e009ae9de4ffbb8654b86905d2e4ea6e4ab6667f5cdcc710",
+    "segmentos_rechazados.csv": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+    "test_access_audit.json": "c8ee2d98cfa3a9048f3ae67c7fb3a0ebeca49b4f569290f97503b10fc4cbb77f"
+  },
+  "hashes_verificados_ahora": {
+    "attack_manifest_test.csv": "3818164ec16f78200c0b3ab49bc2fb39440902a171bb40dea9a0bc3f820e20e1",
+    "attack_manifest_test_config.json": "72ffa630d30471d0ffc37dc8d6c76bd02d368c6f2513f18f5e101de876bb52de",
+    "base_segments_test.csv": "04fc5be3e0fc9ae8fddf3cc23175b48d0086a978eb271c8bc84259c7b0d30088",
+    "manifest_freeze_record.json": "1d689c1cb4822a11fe01939f138a8903ed5034e3ef7e1a1ae8899af47ae42c84",
+    "sampling_audit_test.csv": "55c8c7c00acfe985e009ae9de4ffbb8654b86905d2e4ea6e4ab6667f5cdcc710",
+    "segmentos_rechazados.csv": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+    "test_access_audit.json": "c8ee2d98cfa3a9048f3ae67c7fb3a0ebeca49b4f569290f97503b10fc4cbb77f"
+  },
+  "v1_intacta_no_modificada": true
+}

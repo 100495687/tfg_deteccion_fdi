@@ -1,0 +1,9 @@
+{
+  "selected_configuration": "NONE_NOT_READY_FOR_TEST",
+  "motivo": {
+    "opcion": "C",
+    "motivo": "ni una fusion (regla A) ni H solo (regla B) son globalmente admisibles"
+  },
+  "fecha_ejecucion_utc": "2026-07-29T10:04:25.541094+00:00",
+  "test_intacto": true
+}

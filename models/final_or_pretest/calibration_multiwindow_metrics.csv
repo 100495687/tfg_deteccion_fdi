@@ -1,0 +1,2 @@
+fa_agregada,active_fraction,duracion_media_h,duracion_mediana_h,duracion_p95_h,duracion_maxima_h,seven_day_max_active_fraction,days_over_25pct_active,days_over_50pct_active,consecutive_days_over_50,falla_saturacion,fa_bloque_0,fa_bloque_1,fa_bloque_2,fa_bloque_3,fa_bloque_4,fa_bloque_5
+0.044444444444444446,0.000462962962962963,0.25,0.25,0.25,0.25,0.004464285714285714,0,0,0,False,0.13333333333333333,0.1,0.0,0.03333333333333333,0.0,0.0

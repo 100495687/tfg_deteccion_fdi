@@ -1,0 +1,9 @@
+{
+  "fecha_utc": "2026-07-29T16:01:23.748939+00:00",
+  "status": "READY_FOR_TEST",
+  "n_archivos_congelados": 11,
+  "determinismo_verificado": true,
+  "test_intacto": true,
+  "sklearn_version": "1.9.0",
+  "python_version": "3.14.4"
+}

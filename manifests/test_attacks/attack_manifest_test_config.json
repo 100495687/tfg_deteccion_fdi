@@ -1,0 +1,132 @@
+{
+  "evaluation_status": "RETROSPECTIVE_CONFIRMATORY_EVALUATION",
+  "selected_configuration": "OR_PMULTI_HMULTIWINDOW",
+  "GLOBAL_TEST_MANIFEST_SEED": 12000,
+  "attack_families": [
+    "constant_reduction",
+    "variable_reduction",
+    "linear_ramp",
+    "residual_bypass",
+    "total_bypass"
+  ],
+  "excluded_families": [
+    "time_reversal",
+    "replay",
+    "price_based_load_control",
+    "fgsm",
+    "bim",
+    "adversarial_attacks",
+    "poisoning",
+    "other_variables_attacks",
+    "peak_clipping"
+  ],
+  "durations": [
+    30,
+    60,
+    120,
+    240,
+    360,
+    720,
+    1440
+  ],
+  "n_base_per_duration": 20,
+  "n_base_segments": 140,
+  "n_variants_per_base": 12,
+  "n_attack_episodes": 1680,
+  "severity_parameters": {
+    "constant_reduction": {
+      "LOW": 0.7,
+      "MEDIUM": 0.5,
+      "HIGH": 0.3
+    },
+    "linear_ramp": {
+      "LOW": 0.7,
+      "MEDIUM": 0.5,
+      "HIGH": 0.3
+    }
+  },
+  "variable_reduction_ranges": {
+    "LOW": [
+      0.6,
+      0.8
+    ],
+    "MEDIUM": [
+      0.4,
+      0.6
+    ],
+    "HIGH": [
+      0.2,
+      0.4
+    ]
+  },
+  "bypass_parameters": {
+    "residual": {
+      "RHO010": 0.1,
+      "RHO005": 0.05
+    },
+    "total": "y=0"
+  },
+  "ramp_definition": {
+    "formula": "rho_j = 1 - (1-rho_final)*(j+1)/D",
+    "note": "Extension temporal gradual propuesta en este TFG sobre el modelo multiplicativo de reduccion."
+  },
+  "target_column": "Global_active_power",
+  "injection_resolution": 1,
+  "stratification_targets": {
+    "quarters": {
+      "Q1": 5,
+      "Q2": 5,
+      "Q3": 5,
+      "Q4": 5
+    },
+    "day_type": {
+      "weekday": 12,
+      "weekend": 8
+    },
+    "daypart": {
+      "madrugada": 5,
+      "manana": 5,
+      "tarde": 5,
+      "noche": 5
+    },
+    "note": "objetivos aproximados/best-effort salvo admisibilidad causal y cobertura trimestral"
+  },
+  "admissibility_rules": [
+    "inicio_dentro_de_test",
+    "fin_dentro_de_test",
+    "contexto_previo_suficiente",
+    "contexto_posterior_suficiente",
+    "indice_continuo",
+    "sin_huecos_incompatibles",
+    "sin_padding_artificial",
+    "no_depende_de_datos_tras_fin_de_test",
+    "no_duplicado_misma_duracion",
+    "sin_inspeccionar_consumo_o_scores"
+  ],
+  "pre_context": {
+    "lookback_P_minutes": 360,
+    "max_lag_H_intervals_15min": 672,
+    "max_lag_H_minutes": 10080,
+    "required_pre_context_minutes": 10080,
+    "required_post_context_minutes": 10080
+  },
+  "post_context": {
+    "lookback_P_minutes": 360,
+    "max_lag_H_intervals_15min": 672,
+    "max_lag_H_minutes": 10080,
+    "required_pre_context_minutes": 10080,
+    "required_post_context_minutes": 10080
+  },
+  "independent_counterfactual_branches": true,
+  "test_values_inspected": false,
+  "test_scores_calculated": false,
+  "inference_executed": false,
+  "detector_loaded": false,
+  "attacks_applied": false,
+  "manifest_frozen": true,
+  "high_impact_group": {
+    "absolute_pretest_threshold_available": false,
+    "exploratory_high_impact": true,
+    "note": "no existe umbral absoluto de alto impacto fijado en pre-test; se reportara unicamente como cuartil superior de hidden_fraction_nominal en la fase de evaluacion, sin usar consumo real ni resultados del detector"
+  }
+}

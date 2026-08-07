@@ -1,0 +1,12 @@
+{
+  "score_p": "relative_kw = TCN-AE congelado, sin transformar",
+  "score_h": "causal_relative_kw = max(0, (pred-real)/max(|pred|,0.1))",
+  "forward_fill_p": "causal, np.searchsorted(ts, objetivo, side='right')-1, sin backfill, se propaga solo el estado booleano",
+  "regla_fusion": "active_OR = active_P_ffill OR active_H",
+  "sin_cooldown": true,
+  "sin_AND": true,
+  "sin_ponderaciones": true,
+  "sin_confirmaciones_temporales": true,
+  "sin_tolerancias_temporales": true,
+  "sin_reglas_por_duracion": true
+}

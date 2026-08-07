@@ -1,0 +1,7 @@
+{
+  "particiones_test_index_leido": true,
+  "particiones_test_columnas_numericas_leidas": false,
+  "guardian_usado": "generar_manifiesto_ataques_test.IndiceTestGuardado",
+  "manifest_version": 2,
+  "fecha_utc": "2026-07-29T17:10:48.770393+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "features_orden": [
+    "lag_96",
+    "lag_192",
+    "lag_288",
+    "lag_672",
+    "profile_train",
+    "mad_train",
+    "n_obs_train",
+    "slot_15min",
+    "hora",
+    "dow",
+    "es_finde",
+    "mes",
+    "sin_hora",
+    "cos_hora",
+    "sin_dow",
+    "cos_dow"
+  ]
+}

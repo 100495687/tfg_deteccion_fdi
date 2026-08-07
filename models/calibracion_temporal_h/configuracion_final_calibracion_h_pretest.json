@@ -1,0 +1,56 @@
+{
+  "selected_configuration": "P_MULTI_SEASON_ONLY",
+  "modelo_h": "no aplica (P solo)",
+  "features": null,
+  "hiperparametros": null,
+  "score_h": "no aplica",
+  "procedimiento_calibracion_h": null,
+  "umbral_h": null,
+  "banda_h": null,
+  "procedimiento_p": "P_MULTI_SEASON",
+  "umbral_p": 0.04974786937236786,
+  "forward_fill_p": "causal, np.searchsorted backward, resolucion 15min",
+  "regla_or": "no aplica",
+  "limites_saturacion": {
+    "active_fraction": 0.1,
+    "longest_clean_event_hours": 72.0,
+    "seven_day_max_active_fraction": 0.3,
+    "consecutive_days_over_50": 3
+  },
+  "fechas_entrenamiento": [
+    "2006-12-16 17:24:00",
+    "2009-06-18 17:24:00"
+  ],
+  "fechas_final_cal_pool_180": [
+    "2009-06-18 17:24:00",
+    "2009-12-15 17:24:00"
+  ],
+  "sklearn_version": "1.9.0",
+  "fecha_congelacion_utc": "2026-07-29T11:19:42.277925+00:00",
+  "metadatos_previos": {
+    "hash_modelo_HistGB_PERIODIC": "576b9033b1c35d522be04f648c7cd0998e696eb7d4a2027253f66148af1956c4",
+    "features_periodic": [
+      "lag_96",
+      "lag_192",
+      "lag_288",
+      "lag_672",
+      "profile_train",
+      "mad_train",
+      "n_obs_train",
+      "slot_15min",
+      "hora",
+      "dow",
+      "es_finde",
+      "mes",
+      "sin_hora",
+      "cos_hora",
+      "sin_dow",
+      "cos_dow"
+    ],
+    "umbral_h": 0.8936411147927468,
+    "umbral_p": 0.0418193512877752,
+    "sklearn_version": "1.9.0",
+    "python_version": "3.14.4"
+  },
+  "test_intacto": true
+}

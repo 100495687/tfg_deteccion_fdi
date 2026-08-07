@@ -1,0 +1,11 @@
+{
+  "attack_manifest_test_config_v2.json": "217378b6601f02bb2b53598e160d1d8291c166f8404d034983dfcd46bcb6c276",
+  "attack_manifest_test_v2.csv": "0f4aaed2c570ca63b5a2fd7a75acdd8ebb287d4a45089f07bff7142373fbdee1",
+  "base_segments_test_v2.csv": "33863e0c0f3e0257040ee5e35736c69d2b5e5801d78b47821f2fbf7bf64ac12e",
+  "comparacion_manifiestos_v1_v2.csv": "59de4c9fcbe46ac98addd3e97d519dd524dd930240b057f5faeff8522a0a9579",
+  "desviaciones_objetivo_v2.csv": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+  "manifest_freeze_record_v2.json": "62ea46ddefc362568f00d918e77188082f753be8d7045f1c6df7cc5f2c715a84",
+  "manifest_v1_reference.json": "a2670672103004ccf5a182f311bbec8f3d6ecc2513234acb7111eee188cf8d6e",
+  "segmentos_rechazados_v2.csv": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+  "test_access_audit_v2.json": "89299e84644bdcbe4ce91f54a53e7acd1c5ce9bc3d9cb4d2e368b2daa7742d5b"
+}

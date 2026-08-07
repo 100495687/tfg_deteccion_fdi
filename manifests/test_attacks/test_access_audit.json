@@ -1,0 +1,10 @@
+{
+  "particiones_test_index_leido": true,
+  "particiones_test_columnas_numericas_leidas": false,
+  "guardian_usado": "IndiceTestGuardado",
+  "columnas_expuestas_por_guardian": [
+    "index",
+    "imputado_mask"
+  ],
+  "fecha_utc": "2026-07-29T17:00:30.811447+00:00"
+}

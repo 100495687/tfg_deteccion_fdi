@@ -1,0 +1,127 @@
+{
+  "selected_configuration": "OR_PMULTI_HMULTIWINDOW",
+  "status": "READY_FOR_TEST",
+  "P": {
+    "checkpoint": "models/tcn_ae_ventana360.pt",
+    "score": "relative_kw",
+    "threshold": 0.049748,
+    "resolution_minutes": 60,
+    "forward_fill": "causal"
+  },
+  "H": {
+    "model_path": "models/final_or_pretest/histgb_periodic_final.joblib",
+    "score": "causal_relative_kw",
+    "threshold": 0.8836282304454135,
+    "resolution_minutes": 15,
+    "features_orden": [
+      "lag_96",
+      "lag_192",
+      "lag_288",
+      "lag_672",
+      "profile_train",
+      "mad_train",
+      "n_obs_train",
+      "slot_15min",
+      "hora",
+      "dow",
+      "es_finde",
+      "mes",
+      "sin_hora",
+      "cos_hora",
+      "sin_dow",
+      "cos_dow"
+    ],
+    "hiperparametros": {
+      "learning_rate": 0.1,
+      "max_leaf_nodes": 15,
+      "max_depth": null,
+      "min_samples_leaf": 20,
+      "l2_regularization": 1.0,
+      "max_iter": 100,
+      "max_bins": 255,
+      "early_stopping": true,
+      "validation_fraction": 0.1,
+      "n_iter_no_change": 10,
+      "tol": 1e-07,
+      "loss": "squared_error"
+    },
+    "entrenamiento": {
+      "n_observaciones": 87168,
+      "fecha_inicio": "2006-12-23 17:24:00",
+      "fecha_fin": "2009-06-18 17:23:00"
+    },
+    "calibracion": {
+      "procedimiento": "H_MULTIWINDOW_180",
+      "banda": "principal",
+      "deficiente": false,
+      "fa_agregada": 0.044444444444444446,
+      "fa_por_bloque": [
+        0.13333333333333333,
+        0.1,
+        0.0,
+        0.03333333333333333,
+        0.0,
+        0.0
+      ]
+    },
+    "procedimiento": "H_MULTIWINDOW_180"
+  },
+  "fusion": {
+    "rule": "OR",
+    "common_resolution_minutes": 15,
+    "event_definition": "event_start_t = active_OR_t AND NOT active_OR_{t-1}",
+    "induced_detection_definition": "event_start AND NOT active_clean_local (misma logica ya validada, fusion_p_histgb.simular_episodios_generico)"
+  },
+  "operational_limits": {
+    "FA": {
+      "limite_admisible": 0.15,
+      "obtenido_agregado": 0.044444444444444446
+    },
+    "active_fraction": {
+      "limite": 0.1,
+      "obtenido": 0.000462962962962963
+    },
+    "longest_event": {
+      "limite_horas": 72.0,
+      "obtenido_horas": 0.25
+    },
+    "seven_day_max_active_fraction": {
+      "limite": 0.3,
+      "obtenido": 0.004464285714285714
+    }
+  },
+  "periodos": {
+    "final_train_fin_exclusivo": "2009-06-18 17:24:00",
+    "final_cal_pool_180_ini": "2009-06-18 17:24:00",
+    "final_cal_pool_180_fin_exclusivo": "2009-12-15 17:24:00",
+    "test_inicio": "2009-12-15 17:24:00"
+  },
+  "test": {
+    "untouched": true,
+    "inference_executed": false,
+    "attacks_generated": false,
+    "scores_calculated": false
+  },
+  "decision_previa": {
+    "archivo": "models/auditoria_final_p_vs_or/configuracion_final_decision_pretest.json",
+    "criterios_cumplidos": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ]
+  },
+  "sklearn_version": "1.9.0",
+  "python_version": "3.14.4",
+  "fecha_congelacion_utc": "2026-07-29T16:01:23.615624+00:00"
+}
