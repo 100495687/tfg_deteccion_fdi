@@ -1,111 +1,131 @@
 # Detección no supervisada de fraude eléctrico residencial (per-meter)
 
-Detector de infrarreporte de consumo (fraude deductivo) entrenado únicamente sobre el
-consumo limpio de un único hogar (dataset UCI "Individual Household Electric Power
-Consumption", id=235), sin enfoque poblacional/multi-cliente.
+Detector de infrarreporte de consumo (fraude deductivo) para un único hogar, entrenado sin
+etiquetas de fraude real — solo con consumo limpio. Dataset UCI "Individual Household Electric
+Power Consumption" (id=235), variable objetivo `Global_active_power` (kW).
 
-Variable objetivo única: `Global_active_power` (kW). Se ignoran intensidad, tensión,
-potencia reactiva y los tres submeters.
+## Arquitectura: P OR H
 
-Referencias metodológicas en `docs/papers/` (Takiddin: autoencoders + taxonomía de ataques
-deductivos; Castangia: arquitectura Conv1D-VAE + umbral media+3σ). Ninguno se usa con su
-dataset ni su segmentación original (multi-cliente / por-ciclo): solo como menú de diseño.
+El detector combina dos señales independientes con un OR:
 
-## Estado — pipeline completo (v1), extremo a extremo verificado con datos reales
+- **P** — un autoencoder convolucional temporal (TCN-AE, `src/models/tcn_ae.py`) que reconstruye
+  ventanas de 6h de consumo limpio; cuanto peor reconstruye una ventana nueva, más sospechosa es.
+- **H** — un HistGradientBoostingRegressor causal (`src/predictor_causal_lags.py`) que predice
+  el consumo a 15 min a partir de lags periódicos (día/semana anteriores) y calendario.
 
-- [x] Módulo 1 — `src/data_loading.py`: carga IHEPC, interpolación lineal de huecos (~1.25%).
-- [x] Módulo 2 — `src/splitting.py`: split cronológico train(años 1-2)/val(año 3)/test(año 4),
-      mismo criterio que `../replica_massidda_marrocu/`.
-- [x] Módulo 3 — `src/windowing.py`: ventaneo parametrizable (1440/720/360 min), solape
-      proporcional (1/4 de la ventana) en train, disjuntas en val/test.
-- [x] Módulo 4 — `src/normalization.py`: z-score ajustado solo en train.
-- [x] Módulo 5 — `src/models/tcn_ae.py`: TCN-AE (encoder dilatado + AvgPool bottleneck +
-      decoder simétrico), 23.513 parámetros. Checkpoints entrenados para las 3 ventanas en
-      `models/tcn_ae_ventana{360,720,1440}.pt`.
-- [x] Módulo 6 — `src/anomaly_score.py`: score por ventana, mae/mse/**deficit**/deficit_max.
-- [x] Módulo 7 — `src/thresholding.py`: umbral percentil/media+3σ (solo train) + histograma
-      en `results/figures/hist_scores_train_val.png`.
-- [x] Módulo 8 — `src/attacks.py`: 5 familias de ataque deductivo, testeadas.
-- [x] Módulo 9 — `src/evaluation.py`: episodios independientes por (familia, parámetro,
-      duración), tabla en `results/tables/tabla_dr_fa_por_ataque.csv`, curva en
-      `results/figures/curva_dr_vs_rho.png`. `generar_episodios_scores` calcula el score una
-      vez y `agregar_dr`/`barrer_umbrales_dr_fa` lo reutilizan para comparar umbrales sin
-      recalcular nada.
+Se calibran por separado y se congelan en `models/final_or_pretest/`
+(`OR_PMULTI_HMULTIWINDOW` = `P_MULTI_SEASON` OR `H_MULTIWINDOW_180`). Usar dos detectores en vez
+de uno compensa que cada uno falla en casos distintos: el OR conserva el 99.2% de lo que
+detectaba P por su cuenta, y el 100% de lo que detectaba H por la suya.
 
-Cada módulo es ejecutable de forma aislada: `python -m src.<modulo>` desde esta carpeta
-(reutiliza el checkpoint entrenado vía `src/pipeline.py`, no reentrena cada vez).
+La evaluación final sobre test se etiqueta `RETROSPECTIVE_CONFIRMATORY_EVALUATION`, no como test
+"virgen": una versión anterior del pipeline sí llegó a acceder a esa partición en el pasado. La
+arquitectura final nunca vio esos datos ni se diseñó consultándolos, pero se documenta la
+distinción por honestidad metodológica en vez de llamarlo test prístino sin más.
 
-## Default actual: ventana=360 min (6h), score=deficit, umbral=percentil 99
+## Ataques evaluados
 
-Tras comparar 1440/720/360 min con el mismo criterio de umbral (percentil 99 sobre train),
-360 min gana con diferencia en las 5 familias de ataque (ver
-`results/figures/comparativa_ventanas.png` y `results/tables/comparativa_ventanas.csv`):
+7 formas de infrarreporte, repartidas en 3 sitios del código:
 
-| Familia | 1440 min (FA=0.00%) | 720 min (FA=0.14%) | **360 min (FA=1.52%, default)** |
+- **`src/attacks.py`**: reducción constante, reducción variable, bypass total, bypass residual,
+  recorte de picos — transformaciones puras de la ventana actual (`y = h(x)`).
+- **`src/experimento_ramp.py`**: rampa (reducción que crece linealmente en el tiempo).
+- **`experiments/replay_pilot/`**: replay (sustituir un tramo por otro tramo real de otro
+  momento de la serie) — necesita ventana donante + manifiesto, no encaja como función pura.
+
+## Resultados (evaluación final sobre test)
+
+| | P | H | OR |
 |---|---|---|---|
-| bypass_total | 28.6% | 52.8% | **76.7%** |
-| bypass_residual | 8.3% | 25.0% | **50.0%** |
-| reducción_variable | 2.4% | 2.8% | **23.3%** |
-| reducción_constante | 0.7% | 3.2% | **7.1%** |
-| recorte_picos | 0% | 0% | 0% |
+| DR energético (% de energía oculta que se detecta) | 59.8% | 69.8% | **73.3%** |
+| Falsos positivos | 0.017/día | 0.061/día | 0.078/día |
 
-Razón: un ataque corto se "diluye" menos dentro de una ventana de evaluación más corta. El
-coste es más falsas alarmas (0.00% → 1.52%), asumible dada la mejora. `results/figures/
-curva_roc_dr_fa.png` (barrido de percentiles 50-99.9, ventana=360) muestra que bajar a
-percentil 95 sube el DR global de 17.9% a 31.2% por 6.4% de FA — alternativa válida si se
-tolera más FA; ajustar `umbral.percentil` en `configs/base.yaml` según el caso de uso.
+Clasificación final: `CONFIRMATORY_SUPPORT`, admisible operativamente.
 
-Los checkpoints y resultados de 720/1440 min se conservan (no se han borrado) para poder
-reproducir la comparación o volver atrás sin reentrenar.
-
-## Hallazgos clave
-
-1. **El error de reconstrucción simétrico (MAE/MSE) da DR=0% estructural.** Una ventana
-   atacada (escalada hacia abajo o aplanada) es una señal *más simple* de reconstruir que el
-   consumo real, así que el error absoluto BAJA en vez de subir con la severidad del ataque.
-   El score **`deficit`** (residuo con signo, media(x̂-x) — mismo principio que el déficit de
-   energía D60 de la fase open-loop anterior del TFG) sí es monótono con la severidad y es el
-   default desde entonces.
-2. **`deficit_max`** (residuo con signo en el peor punto de la ventana, pensado para pillar
-   mejor el recorte de picos) se probó a fondo y es **peor que `deficit`** en toda la curva
-   DR-vs-FA, incluso específicamente para recorte de picos. Descartado; se deja implementado
-   en `anomaly_score.py` como opción documentada, no como default.
-3. **El recorte de picos no se detecta en NINGUNA combinación probada** (0% en las 3 ventanas,
-   los 2 scores, todos los umbrales del barrido). Es la limitación real y honesta del enfoque
-   actual (reconstrucción de ventana completa): afecta a muy pocos minutos, se diluye siempre.
-   Candidatos para una fase futura: comparar forma/derivada en vez de magnitud agregada, o un
-   detector específico de picos en paralelo.
-
-## Pendiente / a revisar en la próxima sesión
-
-- El TCN-AE agotó las 100 épocas configuradas sin que el early stopping (paciencia 10)
-  llegara a cortar en ninguna de las 3 ventanas — la val_loss seguía bajando. Aumentar
-  `epochs_max` probablemente mejora la reconstrucción base.
-- `n_posiciones_por_duracion=6` da resultados algo ruidosos por tamaño de muestra pequeño
-  (pasos de ~17% en vez de continuos); subirlo (p.ej. a 20-30) daría cifras más fiables para
-  la memoria, a cambio de más tiempo de evaluación.
-- Recorte de picos sigue sin resolverse (ver hallazgo 3).
-- USAD y SCVAE (interfaz común ya lista en `src/models/base.py`) — fases posteriores.
+**Limitación conocida, sin resolver por señal**: el replay es prácticamente indetectable por
+contenido (DR inducido de solo 1.67% en el piloto dedicado). Por eso el despliegue Edge añade
+autenticación en vez de seguir ajustando el modelo (ver más abajo).
 
 ## Estructura
 
 ```
 deteccion_fraude_no_supervisada/
-├── configs/base.yaml       # ventana, ρ, umbral, score, modelo, seed — única fuente de parámetros
-├── data/{raw,processed}/
-├── docs/papers/
-├── models/                 # checkpoints entrenados (tcn_ae_ventana{360,720,1440}.pt)
-├── src/
-│   ├── data_loading.py
-│   ├── splitting.py
-│   ├── windowing.py
-│   ├── normalization.py
-│   ├── pipeline.py          # setup compartido (carga+split+ventaneo+norm+modelo cacheado)
-│   ├── models/{base,tcn_ae}.py   # usad.py, scvae.py: fases posteriores
-│   ├── anomaly_score.py
-│   ├── thresholding.py
-│   ├── attacks.py
-│   └── evaluation.py
+├── configs/base.yaml         # unica fuente de parametros del pipeline offline
+├── data/{raw,processed}/     # cache del dataset (no versionado)
+├── models/                   # checkpoints y artefactos congelados (P, H, OR)
+├── src/                      # pipeline offline: nucleo (11 modulos) + experimentos
+├── experiments/replay_pilot/ # piloto de replay, aislado
 ├── tests/
-└── results/{tables,figures}/
+├── results/{tables,figures}/
+└── edge_deployment/          # despliegue: motor online, API, Docker, seguridad
 ```
+
+## Cómo ejecutar el pipeline offline
+
+```bash
+pip install pandas numpy scikit-learn scipy matplotlib pyyaml joblib pyarrow ucimlrepo
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # build CPU, mas ligera
+
+python -m src.data_loading        # descarga y cachea el dataset (tarda solo la primera vez)
+python -m src.splitting           # verifica las particiones train/val/test
+python -m src.windowing           # ventaneo
+python -m src.normalization       # normalizacion z-score
+python -m src.models.tcn_ae       # entrena (o carga si ya existe) el checkpoint de P
+python -m src.evaluation          # evaluacion con las 5 familias de attacks.py
+```
+
+Cadena completa para reconstruir la arquitectura final `P OR H` desde cero (cada paso reutiliza
+los artefactos que dejaron los anteriores):
+
+```bash
+python -m src.predictor_causal_lags         # entrena H
+python -m src.fusion_p_histgb               # fusiona P y H
+python -m src.optimizacion_histgb_periodic  # optimiza H con validacion walk-forward
+python -m src.robustez_temporal_p           # calibra P robusto (nace P_MULTI_SEASON)
+python -m src.calibracion_temporal_h        # calibra H (nace H_MULTIWINDOW_180)
+python -m src.auditoria_final_p_vs_or       # decide P solo vs fusion OR
+python -m src.congelacion_final_or_pretest  # congela la arquitectura final en models/final_or_pretest/
+python -m src.evaluacion_final_retrospectiva_test   # evaluacion unica sobre test
+```
+
+## Cómo ejecutar el despliegue Edge
+
+El modelo ya congelado (`models/final_or_pretest/`) se sirve como microservicio HTTP. No hace
+falta ningún dataset en tiempo de ejecución: los artefactos van horneados en la imagen.
+
+**En local, sin Docker:**
+
+```bash
+pip install -r edge_deployment/requirements-edge.txt
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+uvicorn edge_deployment.api.main:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+**Con Docker (imagen de producción):**
+
+```bash
+python edge_deployment/build_docker_context.py
+docker build -t fdia-edge:local -f edge_deployment/Dockerfile edge_deployment/docker_context
+docker run --rm -p 8000:8000 fdia-edge:local
+```
+
+**Probar que responde** (en otra terminal, con el servicio ya arrancado):
+
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+
+curl -X POST http://localhost:8000/readings \
+  -H "Content-Type: application/json" \
+  -d '{"meter_id": "house_01", "timestamp": "2010-01-01T00:00:00", "power_kw": 1.2}'
+```
+
+La respuesta incluye si la lectura fue aceptada, los scores de P y H (cuando toque evaluarlos) y
+si hay alarma (`alert_or`). Encadenar más lecturas del mismo `meter_id` hace avanzar el estado
+interno del motor (buffers, última evaluación de P/H) igual que en un contador real.
+
+**Capa de seguridad opcional (anti-replay)**: activable con la variable de entorno
+`FDIA_ANTI_REPLAY_ENABLED=true` al arrancar el contenedor. Añade autenticación HMAC-SHA-256,
+número de secuencia y frescura de timestamp sobre una ruta paralela (`POST /secure-readings`),
+sin modificar ni sustituir `/readings`.
