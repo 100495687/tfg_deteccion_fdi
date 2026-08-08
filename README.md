@@ -31,9 +31,6 @@ propio umbral calibrado por separado.
 - La alarma final es el **OR** de ambos: `active_P_MULTI_SEASON OR active_H_MULTIWINDOW_180`.
   Usar dos detectores compensa que cada uno falla en casos distintos (ver Resultados).
 
-La decisión de quedarse con la fusión en vez de con P solo se tomó aplicando una regla de 14
-criterios ya fijados de antemano (`src/auditoria_final_p_vs_or.py`), no a ojo tras ver el
-resultado.
 
 ## Pipeline resumido
 
@@ -66,7 +63,6 @@ experiments/       experimentos aislados fuera del pipeline principal (piloto de
 models/            checkpoints y artefactos congelados (P, H, OR)
 manifests/         episodios de ataque de test, congelados con hash
 results/tables/    tablas intermedias necesarias para reproducir decisiones ya tomadas
-docs/              documentación extendida: guía completa, diagramas por bloque, papers
 edge_deployment/   despliegue: motor online, API, Docker, seguridad, tests, benchmarks
 ```
 
@@ -112,10 +108,6 @@ python -m src.robustez_temporal_p      # nace P_MULTI_SEASON
 python -m src.calibracion_temporal_h   # nace H_MULTIWINDOW_180
 python -m src.auditoria_final_p_vs_or  # decide P solo vs. fusion OR
 ```
-
-Algunos de estos pasos leen tablas que generan experimentos previos (`src/analisis_detectabilidad.py`,
-`src/experimento_ramp.py`, `src/energy_distance_operativo.py`...) — el orden completo y el porqué
-de cada uno está documentado en `docs/diagramas_archivos/05_experimentos.md`.
 
 **2. Congelación y evaluación final** (abre la partición de test, una sola vez):
 
@@ -208,5 +200,4 @@ lectura, con estado por contador (`meter_id`):
 El resto de `src/` (stride, tamaño de ventana, agregación del score, análisis de
 detectabilidad, CUSUM, Energy Distance, modelos alternativos de H, etc.) son experimentos que
 justifican decisiones de diseño concretas — por qué esa ventana, por qué ese score, por qué se
-descartó tal alternativa — pero no forman parte de la arquitectura final `P OR H`. El detalle de
-cada uno está en `docs/diagramas_archivos/`.
+descartó tal alternativa — pero no forman parte de la arquitectura final `P OR H`.
