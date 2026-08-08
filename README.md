@@ -164,6 +164,12 @@ se diseñó consultándola, pero se documenta la distinción por honestidad meto
 | DR energético (% de energía oculta detectada) | 59.8% | 69.8% | **73.3%** |
 | Falsas alarmas | 0.017/día | 0.061/día | 0.078/día |
 
+*Tabla calculada solo sobre las 5 familias del manifiesto final: reducción constante/variable,
+bypass total/residual y rampa. Recorte de picos y replay quedaron fuera de estos 1680 episodios;
+replay en concreto se descartó del test principal al ver que su detección por contenido era
+prácticamente nula, y se trasladó al despliegue Edge como problema de autenticación en vez de
+seguir ajustando el modelo (ver más abajo).*
+
 - La fusión mejora el DR energético sobre cualquiera de los dos detectores por separado, y
   conserva el 99.2% de lo que detectaba P solo y el 100% de lo que detectaba H solo: son
   complementarios, no redundantes.
