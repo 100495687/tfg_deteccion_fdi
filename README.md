@@ -78,7 +78,7 @@ se descarga solo la primera vez que se ejecuta `src/data_loading.py`.
 | `src/pipeline.py` | Orquesta carga + split + ventaneo + normalización + carga del modelo; lo reutiliza el resto del código. |
 | `src/models/tcn_ae.py` | Arquitectura y entrenamiento del TCN-AE (P). |
 | `src/base_relative.py` | Declara `relative_kw` como score base de P y fija el checkpoint de 360 min. |
-| `src/attacks.py` | Las 5 funciones de ataque puras: reducción constante, variable, bypass total, bypass residual, recorte de picos. |
+| `src/attacks.py` | Funciones de ataque puras: reducción constante, variable, bypass total, bypass residual. |
 | `src/predictor_causal_lags.py` | Nace H: compara Ridge/HistGB con y sin lags recientes; gana `HistGB_PERIODIC`. |
 | `src/fusion_p_histgb.py` | Primera fusión OR de P y H. |
 | `src/robustez_temporal_p.py` | Nace `P_MULTI_SEASON` (el umbral fijo de P se saturaba en consumo atípico). |
@@ -92,21 +92,30 @@ se descarga solo la primera vez que se ejecuta `src/data_loading.py`.
 
 ## Cómo reproducir el resultado final
 
+**0. Dependencias:**
+
+```bash
+pip install pandas==3.0.3 numpy==2.5.1 scikit-learn==1.9.0 scipy==1.18.0 matplotlib==3.11.0 pyyaml==6.0.3 joblib==1.5.3 pyarrow==25.0.0 ucimlrepo==0.0.7
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+```
+
 **1. Construcción y selección del detector** (entrena P y H, y decide la arquitectura final —
-nunca toca test):
+nunca toca test). El checkpoint de P (`models/tcn_ae_ventana360.pt`) ya está congelado y se
+carga automáticamente donde haga falta, así que no hay que entrenarlo aparte:
 
 ```bash
 python -m src.data_loading
 python -m src.splitting
 python -m src.windowing
 python -m src.normalization
-python -m src.models.tcn_ae            # entrena o carga el checkpoint de P
-python -m src.predictor_causal_lags    # nace H
-python -m src.fusion_p_histgb          # primera fusion OR
+python -m src.episodes                  # genera episodes_master_val.csv, lo necesitan los siguientes pasos
+python -m src.predictor_causal_lags     # nace H
+python -m src.energy_distance_operativo # umbral de P y trayectorias que necesita fusion_p_histgb
+python -m src.fusion_p_histgb           # primera fusion OR
 python -m src.optimizacion_histgb_periodic   # optimiza H con validacion walk-forward
-python -m src.robustez_temporal_p      # nace P_MULTI_SEASON
-python -m src.calibracion_temporal_h   # nace H_MULTIWINDOW_180
-python -m src.auditoria_final_p_vs_or  # decide P solo vs. fusion OR
+python -m src.robustez_temporal_p       # nace P_MULTI_SEASON
+python -m src.calibracion_temporal_h    # nace H_MULTIWINDOW_180 (su "seleccion" impresa es solo de este paso, no la definitiva)
+python -m src.auditoria_final_p_vs_or   # decide P solo vs. fusion OR -- esta es la decision definitiva
 ```
 
 **2. Congelación y evaluación final** (abre la partición de test, una sola vez):
@@ -158,9 +167,9 @@ Los artefactos vigentes de la arquitectura congelada son:
 | Falsas alarmas | 0.017/día | 0.061/día | 0.078/día |
 
 *Tabla calculada solo sobre las 5 familias del manifiesto final: reducción constante/variable,
-bypass total/residual y rampa. Replay quedó fuera de estos 1680 episodios ya que al ver que su detección por contenido era
-prácticamente nula, y se trasladó al despliegue Edge como problema de autenticación en vez de
-seguir ajustando el modelo (ver más abajo).*
+bypass total/residual y rampa. Replay quedó fuera de estos 1680 episodios porque su detección
+por contenido resultó prácticamente nula, y se trasladó al despliegue Edge como problema de
+autenticación en vez de seguir ajustando el modelo (ver más abajo).*
 
 - La fusión mejora el DR energético sobre cualquiera de los dos detectores por separado, y
   conserva el 99.2% de lo que detectaba P solo y el 100% de lo que detectaba H solo: son
@@ -174,7 +183,26 @@ seguir ajustando el modelo (ver más abajo).*
 ## Despliegue Edge
 
 `edge_deployment/` reimplementa la misma arquitectura P OR H para inferencia online, lectura a
-lectura, con estado por contador (`meter_id`):
+lectura, con estado por contador (`meter_id`). Para arrancarlo en local (sin Docker), con los
+artefactos de `models/final_or_pretest/` ya generados en el paso anterior:
+
+```bash
+pip install -r edge_deployment/requirements-edge.txt
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+
+python -m edge_deployment.core.freeze_params_norm    # normalizacion de P, un solo uso
+python -m edge_deployment.core.manifest_v2 --build   # manifiesto de integridad, un solo uso
+
+uvicorn edge_deployment.api.main:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
+curl -X POST http://127.0.0.1:8000/readings \
+  -H "Content-Type: application/json" \
+  -d '{"meter_id": "house_01", "timestamp": "2010-01-01T00:00:00", "power_kw": 1.2}'
+```
 
 - **Motor** (`core/`): agregación causal a 15 min, ventanas de P, lags de H, fusión OR — todo
   sobre buffers acotados en memoria, nunca releyendo el histórico completo.
