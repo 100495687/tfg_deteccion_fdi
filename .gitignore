@@ -1,5 +1,6 @@
 data/raw/
 data/processed/
+docs/
 results/tables/
 results/logs/
 experiments/threshold_tradeoff/
